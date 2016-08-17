@@ -1,0 +1,9 @@
+*.suo
+/.build/
+*.ipdb
+*.iobj
+*.ilk
+NotifyClock.Debug.*.exe
+NotifyClock.Debug.*.pdb
+*.VC.VC.opendb
+*.vc.db
