@@ -1,8 +1,30 @@
+// NotifyClock - copyright (C) 2016 by Tom Seddon <notifyclock@tomseddon.plus.com>
+//
+// This program is free software : you can redistribute it and / or modify
+// it under the terms of the GNU General Public License as published by
+// the Free Software Foundation, either version 3 of the License, or
+// (at your option) any later version.
+// 
+// This program is distributed in the hope that it will be useful,
+// but WITHOUT ANY WARRANTY; without even the implied warranty of
+// MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.See the
+// GNU General Public License for more details.
+// 
+// You should have received a copy of the GNU General Public License
+// along with this program.If not, see <http://www.gnu.org/licenses/>.
+
 #define _CRT_SECURE_NO_WARNINGS
 #include <Windows.h>
+#include <Windowsx.h>
 #include <shellapi.h>
 #include <stdint.h>
 #include <stdio.h>
+
+//////////////////////////////////////////////////////////////////////////
+//////////////////////////////////////////////////////////////////////////
+
+// pretty sure this warning is bogus, since VS2015 supports C99?
+#pragma warning(disable:4204)//nonstandard extension used: non-constant aggregate initializer
 
 //////////////////////////////////////////////////////////////////////////
 //////////////////////////////////////////////////////////////////////////
@@ -36,10 +58,9 @@ static const uint8_t bitmaps[10][8] = {
 //////////////////////////////////////////////////////////////////////////
 //////////////////////////////////////////////////////////////////////////
 
+static WORD g_displayedHour = MAXWORD;
+static WORD g_displayedMinute = MAXWORD;
 static HWND g_hWnd;
-static HICON g_hCurrentIcon16x16;
-static HICON g_hCurrentIcon32x32;
-static HBITMAP g_maskBitmap16x16;
 static HBITMAP g_maskBitmap32x32;
 
 //////////////////////////////////////////////////////////////////////////
@@ -59,23 +80,6 @@ static void dprintf(const char *fmt, ...)
 
 //////////////////////////////////////////////////////////////////////////
 //////////////////////////////////////////////////////////////////////////
-
-static uint8_t Get1x(uint8_t x)
-{
-	return x;
-}
-
-static void Digit(uint8_t *p, int c)
-{
-	ASSERT(c >= 0 && c < 10);
-
-	for (int i = 0; i < 8; ++i)
-	{
-		uint8_t b = Get1x(bitmaps[c][i]);
-
-		p[i * 2] = b;
-	}
-}
 
 static uint8_t Get2x(uint8_t x)
 {
@@ -120,54 +124,18 @@ static void Digit2x(uint8_t *p, int c)
 //////////////////////////////////////////////////////////////////////////
 //////////////////////////////////////////////////////////////////////////
 
-static void CreateTimeIcons(HICON *hIcon16x16, HICON *hIcon32x32, int top, int bot)
+static char *GetTimeString(
+	int (WINAPI *fn)(LCID, DWORD, const SYSTEMTIME *, LPCTSTR, LPTSTR, int),
+	DWORD flags,
+	const SYSTEMTIME *time)
 {
-	{
-		uint8_t xor[16][2];
+	int n = (*fn)(LOCALE_USER_DEFAULT, flags, time, NULL, NULL, 0);
 
-		memset(xor, 0, sizeof xor);
+	char *p = malloc(n);
 
-		Digit(&xor[0][0], top / 10 % 10);
-		Digit(&xor[0][1], top % 10);
-		Digit(&xor[8][0], bot / 10 % 10);
-		Digit(&xor[8][1], bot % 10);
+	(*fn)(LOCALE_USER_DEFAULT, flags, time, NULL, p, n);
 
-		ICONINFO ii = { TRUE,0,0,g_maskBitmap16x16,CreateBitmap(16,16,1,1,xor), };
-		*hIcon16x16 = CreateIconIndirect(&ii);
-	}
-
-	{
-		uint8_t xor[32][4];
-
-		memset(xor, 0, sizeof xor);
-
-		Digit2x(&xor[0][0], top / 10 % 10);
-		Digit2x(&xor[0][2], top % 10);
-		Digit2x(&xor[16][0], bot / 10 % 10);
-		Digit2x(&xor[16][2], bot % 10);
-
-		ICONINFO ii = { TRUE,0,0,g_maskBitmap32x32,CreateBitmap(32,32,1,1,xor), };
-		*hIcon32x32 = CreateIconIndirect(&ii);
-	}
-}
-
-//////////////////////////////////////////////////////////////////////////
-//////////////////////////////////////////////////////////////////////////
-
-static void DoNotify(DWORD dwMessage, HICON hIcon)
-{
-	NOTIFYICONDATA nid = { sizeof nid };
-
-	nid.hWnd = g_hWnd;
-	nid.hIcon = hIcon;
-	nid.uID = NID_ID;
-	nid.uFlags = NIF_ICON | NIF_TIP | NIF_MESSAGE;
-	nid.uCallbackMessage = WM_USER;
-
-	snprintf(nid.szTip, sizeof nid.szTip, "blah");
-
-	BOOL good = Shell_NotifyIcon(dwMessage, &nid);
-	ASSERT(good);
+	return p;
 }
 
 //////////////////////////////////////////////////////////////////////////
@@ -176,23 +144,86 @@ static void DoNotify(DWORD dwMessage, HICON hIcon)
 static void UpdateIcon(DWORD dwMessage)
 {
 	SYSTEMTIME time;
-	GetLocalTime(&time);
+	{
+		GetLocalTime(&time);
 
-	HICON hNewIcon16x16, hNewIcon32x32;
-	CreateTimeIcons(&hNewIcon16x16, &hNewIcon32x32, time.wMinute, time.wSecond);
+		if (g_displayedHour == time.wHour&&g_displayedMinute == time.wMinute)
+			return;
+	}
 
-	DoNotify(dwMessage, hNewIcon32x32);
-	SendMessage(g_hWnd, WM_SETICON, ICON_BIG, (LPARAM)hNewIcon32x32);
-	SendMessage(g_hWnd, WM_SETICON, ICON_SMALL, (LPARAM)hNewIcon16x16);
+	uint8_t bits[32][4];
+	{
+		memset(bits, 0, sizeof bits);
 
-	if (g_hCurrentIcon16x16)
-		DestroyIcon(g_hCurrentIcon16x16);
+		Digit2x(&bits[0][0], time.wHour / 10 % 10);
+		Digit2x(&bits[0][2], time.wHour % 10);
+		Digit2x(&bits[16][0], time.wMinute / 10 % 10);
+		Digit2x(&bits[16][2], time.wMinute % 10);
+	}
 
-	if (g_hCurrentIcon32x32)
-		DestroyIcon(g_hCurrentIcon32x32);
+	HICON hIcon;
+	{
+		ICONINFO iconInfo = { TRUE,0,0,g_maskBitmap32x32,CreateBitmap(32,32,1,1,bits), };
+		hIcon = CreateIconIndirect(&iconInfo);
+		if (!hIcon)
+			return;
+	}
 
-	g_hCurrentIcon16x16 = hNewIcon16x16;
-	g_hCurrentIcon32x32 = hNewIcon32x32;
+	BOOL good;
+	{
+		NOTIFYICONDATA nid = {
+			sizeof nid,.hWnd = g_hWnd,.hIcon = hIcon,.uID = NID_ID,
+			.uFlags = NIF_ICON | NIF_TIP | NIF_MESSAGE,.uCallbackMessage = WM_USER,
+			.uVersion = NOTIFYICON_VERSION_4,
+		};
+
+		char *timeStr = GetTimeString(&GetTimeFormat, TIME_NOSECONDS, &time);
+		char *dateStr = GetTimeString(&GetDateFormat, DATE_LONGDATE, &time);
+
+		snprintf(nid.szTip, sizeof nid.szTip, "%s %s", timeStr, dateStr);
+
+		free(timeStr);
+		timeStr = NULL;
+
+		free(dateStr);
+		dateStr = NULL;
+
+		good = Shell_NotifyIcon(dwMessage, &nid);
+	}
+
+	DestroyIcon(hIcon);
+	hIcon = NULL;
+
+	if (!good)
+		return;
+
+	g_displayedHour = time.wHour;
+	g_displayedMinute = time.wMinute;
+}
+
+//////////////////////////////////////////////////////////////////////////
+//////////////////////////////////////////////////////////////////////////
+
+static void DoPopupMenu(int x, int y)
+{
+	SetForegroundWindow(g_hWnd);
+
+	HMENU hMenu;
+	int idExit;
+	{
+		hMenu = CreatePopupMenu();
+		int id = 1;
+
+		AppendMenu(hMenu, 0, idExit = id++, "E&xit");
+	}
+
+	int id = TrackPopupMenuEx(hMenu, TPM_RETURNCMD, x, y, g_hWnd, 0);
+
+	DestroyMenu(hMenu);
+	hMenu = NULL;
+
+	if (id == idExit)
+		PostQuitMessage(0);
 }
 
 //////////////////////////////////////////////////////////////////////////
@@ -202,6 +233,19 @@ static LRESULT CALLBACK WndProc(HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM lPar
 {
 	switch (uMsg)
 	{
+	case WM_USER:
+		{
+			if (lParam == WM_RBUTTONUP)
+			{
+				POINT mpt;
+				GetCursorPos(&mpt);
+
+				DoPopupMenu(mpt.x, mpt.y);
+				return 0;
+			}
+		}
+		break;
+
 	case WM_CLOSE:
 		PostQuitMessage(0);
 		return 0;
@@ -213,41 +257,49 @@ static LRESULT CALLBACK WndProc(HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM lPar
 //////////////////////////////////////////////////////////////////////////
 //////////////////////////////////////////////////////////////////////////
 
-static void CreateStuff(void)
+static VOID CALLBACK UpdateIconTimerProc(HWND hWnd, UINT uMsg, UINT_PTR idEvent, DWORD dwTime)
 {
-	{
-		uint8_t zero[32 * 32 / 8] = { 0, };
+	(void)hWnd, (void)uMsg, (void)idEvent, (void)dwTime;
 
-		g_maskBitmap16x16 = CreateBitmap(16, 16, 1, 1, zero);
-		g_maskBitmap32x32 = CreateBitmap(32, 32, 1, 1, zero);
-	}
-
-	WNDCLASSEX w;
-
-	w.cbClsExtra = 0;
-	w.cbSize = sizeof w;
-	w.cbWndExtra = 0;
-	w.hbrBackground = GetStockObject(WHITE_BRUSH);
-	w.hCursor = LoadCursor(0, IDC_ARROW);
-	w.hIconSm = w.hIcon = LoadIcon(0, IDI_APPLICATION);
-	w.hInstance = GetModuleHandle(NULL);
-	w.lpfnWndProc = &WndProc;
-	w.lpszClassName = CLASS_NAME;
-	w.lpszMenuName = NULL;
-	w.style = CS_HREDRAW | CS_VREDRAW;
-
-	RegisterClassEx(&w);
-
-	g_hWnd = CreateWindow(CLASS_NAME, "NotifyClock", WS_OVERLAPPEDWINDOW, CW_USEDEFAULT, -1, CW_USEDEFAULT, -1, NULL, NULL, GetModuleHandle(0), NULL);
-	ShowWindow(g_hWnd, SW_SHOW);
+	UpdateIcon(NIM_MODIFY);
 }
 
 //////////////////////////////////////////////////////////////////////////
 //////////////////////////////////////////////////////////////////////////
 
-static VOID CALLBACK UpdateIconTimerProc(HWND hWnd, UINT uMsg, UINT_PTR idEvent, DWORD dwTime)
+static void CreateStuff(void)
 {
-	UpdateIcon(NIM_MODIFY);
+	{
+		uint8_t zero[32 * 32 / 8] = { 0, };
+
+		g_maskBitmap32x32 = CreateBitmap(32, 32, 1, 1, zero);
+	}
+
+	{
+		WNDCLASSEX w;
+
+		w.cbClsExtra = 0;
+		w.cbSize = sizeof w;
+		w.cbWndExtra = 0;
+		w.hbrBackground = GetStockObject(WHITE_BRUSH);
+		w.hCursor = LoadCursor(0, IDC_ARROW);
+		w.hIconSm = w.hIcon = LoadIcon(0, IDI_APPLICATION);
+		w.hInstance = GetModuleHandle(NULL);
+		w.lpfnWndProc = &WndProc;
+		w.lpszClassName = CLASS_NAME;
+		w.lpszMenuName = NULL;
+		w.style = CS_HREDRAW | CS_VREDRAW;
+
+		RegisterClassEx(&w);
+	}
+
+	g_hWnd = CreateWindow(CLASS_NAME, "NotifyClock", WS_OVERLAPPEDWINDOW, CW_USEDEFAULT, -1, 0, 0,
+		NULL, NULL, GetModuleHandle(0), NULL);
+	//ShowWindow(g_hWnd, SW_SHOW);
+
+	UpdateIcon(NIM_ADD);
+
+	SetTimer(g_hWnd, 1, 1000, &UpdateIconTimerProc);
 }
 
 //////////////////////////////////////////////////////////////////////////
@@ -268,7 +320,8 @@ static void MainLoop(void)
 		DispatchMessage(&msg);
 	}
 
-	DoNotify(NIM_DELETE, NULL);
+	Shell_NotifyIcon(NIM_DELETE, &(NOTIFYICONDATA){.cbSize = sizeof(NOTIFYICONDATA),
+		.hWnd = g_hWnd, .uID = NID_ID});
 }
 
 //////////////////////////////////////////////////////////////////////////
@@ -281,15 +334,9 @@ int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine
 	if (OpenMutex(MUTEX_ALL_ACCESS, FALSE, MUTEX_NAME))
 		return 0;
 
-	dprintf("Icon dims: %d x %d\n", GetSystemMetrics(SM_CXICON), GetSystemMetrics(SM_CYICON));
-
 	HANDLE hMutex = CreateMutex(NULL, FALSE, MUTEX_NAME);
 
 	CreateStuff();
-
-	UpdateIcon(NIM_ADD);
-
-	SetTimer(g_hWnd, 1, 1000, &UpdateIconTimerProc);
 
 	MainLoop();
 

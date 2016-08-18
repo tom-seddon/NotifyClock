@@ -1,0 +1,24 @@
+For a long time I've been using Windows with a vertical taskbar.
+Compared to the default horizontal orientation, you can have a lot
+more windows on screen before Windows has to merge icons or hide the
+window title. 
+
+The Windows clock takes up a lot of space in this mode though.
+
+[[./doc_imgs/WindowsTaskbarClock.png][picture of Windows taskbar clock looking rather large]]
+
+You can hide it... but now you've got no clock.
+
+=NotifyClock= fixes this by displaying a tiny little clock in the
+notification area (aka system tray). It shows two numbers: at the top,
+the hour (in 24H format), and at the bottom, the minute.
+
+[[./doc_imgs/NotifyClock.png][picture of NotifyClock running]]
+
+If you forget what date it is, hover over the icon to get a tooltip.
+
+[[./doc_imgs/NotifyClockTooltip.png][picture of NotifyClock with tooltip]]
+
+If you forget what day it is, sorry - =NotifyClock= can't help you.
+
+To exit, right click the icon and select =Exit= from the menu.
