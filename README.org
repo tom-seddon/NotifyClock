@@ -5,7 +5,7 @@ window title.
 
 The Windows clock takes up a lot of space in this mode though.
 
-[[./doc_imgs/WindowsTaskbarClock.png][picture of Windows taskbar clock looking rather large]]
+[[./doc_imgs/WindowsTaskbarClock.png]]
 
 You can hide it... but now you've got no clock.
 
@@ -13,11 +13,11 @@ You can hide it... but now you've got no clock.
 notification area (aka system tray). It shows two numbers: at the top,
 the hour (in 24H format), and at the bottom, the minute.
 
-[[./doc_imgs/NotifyClock.png][picture of NotifyClock running]]
+[[./doc_imgs/NotifyClock.png]]
 
 If you forget what date it is, hover over the icon to get a tooltip.
 
-[[./doc_imgs/NotifyClockTooltip.png][picture of NotifyClock with tooltip]]
+[[./doc_imgs/NotifyClockTooltip.png]]
 
 If you forget what day it is, sorry - =NotifyClock= can't help you.
 
