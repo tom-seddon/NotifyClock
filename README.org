@@ -25,8 +25,8 @@ To exit, right click the icon and select =Exit= from the menu.
 
 * Download
 
-[[https://github.com/tom-seddon/NotifyClock/blob/master/NotifyClock_Release_x86.exe?raw%3Dtrue][Get the EXE direct from this repo]] and save it in your start menu's
-startup folder.
+Get the EXE direct from the repo - [[https://github.com/tom-seddon/NotifyClock/blob/master/NotifyClock_Release_x86.exe][=NotifyClock_Release_x86.exe=]],
+click =Download= - and save it in your start menu's startup folder.
 
 (Only tested on Windows 10 so far, but I told Visual Studio to build
 for Windows 8.1, so... who knows?)
