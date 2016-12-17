@@ -34,48 +34,48 @@
 //////////////////////////////////////////////////////////////////////////
 //////////////////////////////////////////////////////////////////////////
 
-static const char MUTEX_NAME[] = "NotifyClock-E12FB551-CEB7-41CD-9826-4EE66F2C8167";
-static const char CLASS_NAME[] = "NotifyClock-CD0284C5-0226-4C94-AB51-45575117D13F";
+static const char MUTEX_NAME[]="NotifyClock-E12FB551-CEB7-41CD-9826-4EE66F2C8167";
+static const char CLASS_NAME[]="NotifyClock-CD0284C5-0226-4C94-AB51-45575117D13F";
 
-static const UINT NID_ID = 0;
+static const UINT NID_ID=0;
 
 //////////////////////////////////////////////////////////////////////////
 //////////////////////////////////////////////////////////////////////////
 
-static const uint8_t bitmaps[10][8] = {
-	{ 0x3C, 0x66, 0x6E, 0x7E, 0x76, 0x66, 0x3C, 0x00, },
-	{ 0x18, 0x38, 0x18, 0x18, 0x18, 0x18, 0x7E, 0x00, },
-	{ 0x3C, 0x66, 0x06, 0x0C, 0x18, 0x30, 0x7E, 0x00, },
-	{ 0x3C, 0x66, 0x06, 0x1C, 0x06, 0x66, 0x3C, 0x00, },
-	{ 0x0C, 0x1C, 0x3C, 0x6C, 0x7E, 0x0C, 0x0C, 0x00, },
-	{ 0x7E, 0x60, 0x7C, 0x06, 0x06, 0x66, 0x3C, 0x00, },
-	{ 0x1C, 0x30, 0x60, 0x7C, 0x66, 0x66, 0x3C, 0x00, },
-	{ 0x7E, 0x06, 0x0C, 0x18, 0x30, 0x30, 0x30, 0x00, },
-	{ 0x3C, 0x66, 0x66, 0x3C, 0x66, 0x66, 0x3C, 0x00, },
-	{ 0x3C, 0x66, 0x66, 0x3E, 0x06, 0x0C, 0x38, 0x00, },
+static const uint8_t bitmaps[10][8]={
+    { 0x3C, 0x66, 0x6E, 0x7E, 0x76, 0x66, 0x3C, 0x00, },
+    { 0x18, 0x38, 0x18, 0x18, 0x18, 0x18, 0x7E, 0x00, },
+    { 0x3C, 0x66, 0x06, 0x0C, 0x18, 0x30, 0x7E, 0x00, },
+    { 0x3C, 0x66, 0x06, 0x1C, 0x06, 0x66, 0x3C, 0x00, },
+    { 0x0C, 0x1C, 0x3C, 0x6C, 0x7E, 0x0C, 0x0C, 0x00, },
+    { 0x7E, 0x60, 0x7C, 0x06, 0x06, 0x66, 0x3C, 0x00, },
+    { 0x1C, 0x30, 0x60, 0x7C, 0x66, 0x66, 0x3C, 0x00, },
+    { 0x7E, 0x06, 0x0C, 0x18, 0x30, 0x30, 0x30, 0x00, },
+    { 0x3C, 0x66, 0x66, 0x3C, 0x66, 0x66, 0x3C, 0x00, },
+    { 0x3C, 0x66, 0x66, 0x3E, 0x06, 0x0C, 0x38, 0x00, },
 };
 
 //////////////////////////////////////////////////////////////////////////
 //////////////////////////////////////////////////////////////////////////
 
-static WORD g_displayedHour = MAXWORD;
-static WORD g_displayedMinute = MAXWORD;
+static WORD g_displayedHour=MAXWORD;
+static WORD g_displayedMinute=MAXWORD;
 static HWND g_hWnd;
 static HBITMAP g_maskBitmap32x32;
 
 //////////////////////////////////////////////////////////////////////////
 //////////////////////////////////////////////////////////////////////////
 
-static void dprintf(const char *fmt, ...)
+static void dprintf(const char *fmt,...)
 {
-	char tmp[1000];
-	va_list v;
+    char tmp[1000];
+    va_list v;
 
-	va_start(v, fmt);
-	_vsnprintf(tmp, sizeof tmp, fmt, v);
-	va_end(v);
+    va_start(v,fmt);
+    _vsnprintf(tmp,sizeof tmp,fmt,v);
+    va_end(v);
 
-	OutputDebugString(tmp);
+    OutputDebugString(tmp);
 }
 
 //////////////////////////////////////////////////////////////////////////
@@ -83,59 +83,59 @@ static void dprintf(const char *fmt, ...)
 
 static uint8_t Get2x(uint8_t x)
 {
-	uint8_t r = 0;
+    uint8_t r=0;
 
-	ASSERT(!(x & 0xf0));
+    ASSERT(!(x&0xf0));
 
-	if (x & 8)
-		r |= 128 | 64;
+    if(x&8)
+        r|=128|64;
 
-	if (x & 4)
-		r |= 32 | 16;
+    if(x&4)
+        r|=32|16;
 
-	if (x & 2)
-		r |= 8 | 4;
+    if(x&2)
+        r|=8|4;
 
-	if (x & 1)
-		r |= 2 | 1;
+    if(x&1)
+        r|=2|1;
 
-	return r;
+    return r;
 }
 
-static void Digit2x(uint8_t *p, int c)
+static void Digit2x(uint8_t *p,int c)
 {
-	ASSERT(c >= 0 && c < 10);
+    ASSERT(c>=0&&c<10);
 
-	for (int i = 0; i < 8; ++i)
-	{
-		int y0 = i * 2 + 0;
-		int y1 = i * 2 + 1;
+    for(int i=0; i<8; ++i)
+    {
+        int y0=i*2+0;
+        int y1=i*2+1;
 
-		uint8_t b = bitmaps[c][i];
+        uint8_t b=bitmaps[c][i];
 
-		uint8_t l = Get2x(b >> 4);
-		uint8_t r = Get2x(b & 15);
+        uint8_t l=Get2x(b>>4);
+        uint8_t r=Get2x(b&15);
 
-		p[y0 * 4 + 0] = p[y1 * 4 + 0] = l;
-		p[y0 * 4 + 1] = p[y1 * 4 + 1] = r;
-	}
+        p[y0*4+0]=p[y1*4+0]=l;
+        p[y0*4+1]=p[y1*4+1]=r;
+    }
 }
 
 //////////////////////////////////////////////////////////////////////////
 //////////////////////////////////////////////////////////////////////////
 
 static char *GetTimeString(
-	int (WINAPI *fn)(LCID, DWORD, const SYSTEMTIME *, LPCTSTR, LPTSTR, int),
-	DWORD flags,
-	const SYSTEMTIME *time)
+    int (WINAPI *fn)(LCID,DWORD,const SYSTEMTIME *,LPCTSTR,LPTSTR,int),
+    DWORD flags,
+    const SYSTEMTIME *time)
 {
-	int n = (*fn)(LOCALE_USER_DEFAULT, flags, time, NULL, NULL, 0);
+    int n=(*fn)(LOCALE_USER_DEFAULT,flags,time,NULL,NULL,0);
 
-	char *p = malloc(n);
+    char *p=malloc(n);
 
-	(*fn)(LOCALE_USER_DEFAULT, flags, time, NULL, p, n);
+    (*fn)(LOCALE_USER_DEFAULT,flags,time,NULL,p,n);
 
-	return p;
+    return p;
 }
 
 //////////////////////////////////////////////////////////////////////////
@@ -143,125 +143,125 @@ static char *GetTimeString(
 
 static void UpdateIcon(DWORD dwMessage)
 {
-	SYSTEMTIME time;
-	{
-		GetLocalTime(&time);
+    SYSTEMTIME time;
+    {
+        GetLocalTime(&time);
 
-		if (g_displayedHour == time.wHour&&g_displayedMinute == time.wMinute)
-			return;
-	}
+        if(g_displayedHour==time.wHour&&g_displayedMinute==time.wMinute)
+            return;
+    }
 
-	uint8_t bits[32][4];
-	{
-		memset(bits, 0, sizeof bits);
+    uint8_t bits[32][4];
+    {
+        memset(bits,0,sizeof bits);
 
-		Digit2x(&bits[0][0], time.wHour / 10 % 10);
-		Digit2x(&bits[0][2], time.wHour % 10);
-		Digit2x(&bits[16][0], time.wMinute / 10 % 10);
-		Digit2x(&bits[16][2], time.wMinute % 10);
-	}
+        Digit2x(&bits[0][0],time.wHour/10%10);
+        Digit2x(&bits[0][2],time.wHour%10);
+        Digit2x(&bits[16][0],time.wMinute/10%10);
+        Digit2x(&bits[16][2],time.wMinute%10);
+    }
 
-	HICON hIcon;
-	{
-		ICONINFO iconInfo = { TRUE,0,0,g_maskBitmap32x32,CreateBitmap(32,32,1,1,bits), };
-		hIcon = CreateIconIndirect(&iconInfo);
-		if (!hIcon)
-			return;
-	}
+    HICON hIcon;
+    {
+        ICONINFO iconInfo={TRUE,0,0,g_maskBitmap32x32,CreateBitmap(32,32,1,1,bits),};
+        hIcon=CreateIconIndirect(&iconInfo);
+        if(!hIcon)
+            return;
+    }
 
-	BOOL good;
-	{
-		NOTIFYICONDATA nid = {
-			sizeof nid,.hWnd = g_hWnd,.hIcon = hIcon,.uID = NID_ID,
-			.uFlags = NIF_ICON | NIF_TIP | NIF_MESSAGE,.uCallbackMessage = WM_USER,
-			.uVersion = NOTIFYICON_VERSION_4,
-		};
+    BOOL good;
+    {
+        NOTIFYICONDATA nid={
+            sizeof nid,.hWnd=g_hWnd,.hIcon=hIcon,.uID=NID_ID,
+            .uFlags=NIF_ICON|NIF_TIP|NIF_MESSAGE,.uCallbackMessage=WM_USER,
+            .uVersion=NOTIFYICON_VERSION_4,
+        };
 
-		char *timeStr = GetTimeString(&GetTimeFormat, TIME_NOSECONDS, &time);
-		char *dateStr = GetTimeString(&GetDateFormat, DATE_LONGDATE, &time);
+        char *timeStr=GetTimeString(&GetTimeFormat,TIME_NOSECONDS,&time);
+        char *dateStr=GetTimeString(&GetDateFormat,DATE_LONGDATE,&time);
 
-		snprintf(nid.szTip, sizeof nid.szTip, "%s %s", timeStr, dateStr);
+        snprintf(nid.szTip,sizeof nid.szTip,"%s %s",timeStr,dateStr);
 
-		free(timeStr);
-		timeStr = NULL;
+        free(timeStr);
+        timeStr=NULL;
 
-		free(dateStr);
-		dateStr = NULL;
+        free(dateStr);
+        dateStr=NULL;
 
-		good = Shell_NotifyIcon(dwMessage, &nid);
-	}
+        good=Shell_NotifyIcon(dwMessage,&nid);
+    }
 
-	DestroyIcon(hIcon);
-	hIcon = NULL;
+    DestroyIcon(hIcon);
+    hIcon=NULL;
 
-	if (!good)
-		return;
+    if(!good)
+        return;
 
-	g_displayedHour = time.wHour;
-	g_displayedMinute = time.wMinute;
+    g_displayedHour=time.wHour;
+    g_displayedMinute=time.wMinute;
 }
 
 //////////////////////////////////////////////////////////////////////////
 //////////////////////////////////////////////////////////////////////////
 
-static void DoPopupMenu(int x, int y)
+static void DoPopupMenu(int x,int y)
 {
-	SetForegroundWindow(g_hWnd);
+    SetForegroundWindow(g_hWnd);
 
-	HMENU hMenu;
-	int idExit;
-	{
-		hMenu = CreatePopupMenu();
-		int id = 1;
+    HMENU hMenu;
+    int idExit;
+    {
+        hMenu=CreatePopupMenu();
+        int id=1;
 
-		AppendMenu(hMenu, 0, idExit = id++, "E&xit");
-	}
+        AppendMenu(hMenu,0,idExit=id++,"E&xit");
+    }
 
-	int id = TrackPopupMenuEx(hMenu, TPM_RETURNCMD, x, y, g_hWnd, 0);
+    int id=TrackPopupMenuEx(hMenu,TPM_RETURNCMD,x,y,g_hWnd,0);
 
-	DestroyMenu(hMenu);
-	hMenu = NULL;
+    DestroyMenu(hMenu);
+    hMenu=NULL;
 
-	if (id == idExit)
-		PostQuitMessage(0);
+    if(id==idExit)
+        PostQuitMessage(0);
 }
 
 //////////////////////////////////////////////////////////////////////////
 //////////////////////////////////////////////////////////////////////////
 
-static LRESULT CALLBACK WndProc(HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM lParam)
+static LRESULT CALLBACK WndProc(HWND hWnd,UINT uMsg,WPARAM wParam,LPARAM lParam)
 {
-	switch (uMsg)
-	{
-	case WM_USER:
-		{
-			if (lParam == WM_RBUTTONUP)
-			{
-				POINT mpt;
-				GetCursorPos(&mpt);
+    switch(uMsg)
+    {
+    case WM_USER:
+        {
+            if(lParam==WM_RBUTTONUP)
+            {
+                POINT mpt;
+                GetCursorPos(&mpt);
 
-				DoPopupMenu(mpt.x, mpt.y);
-				return 0;
-			}
-		}
-		break;
+                DoPopupMenu(mpt.x,mpt.y);
+                return 0;
+            }
+        }
+        break;
 
-	case WM_CLOSE:
-		PostQuitMessage(0);
-		return 0;
-	}
+    case WM_CLOSE:
+        PostQuitMessage(0);
+        return 0;
+    }
 
-	return DefWindowProc(hWnd, uMsg, wParam, lParam);
+    return DefWindowProc(hWnd,uMsg,wParam,lParam);
 }
 
 //////////////////////////////////////////////////////////////////////////
 //////////////////////////////////////////////////////////////////////////
 
-static VOID CALLBACK UpdateIconTimerProc(HWND hWnd, UINT uMsg, UINT_PTR idEvent, DWORD dwTime)
+static VOID CALLBACK UpdateIconTimerProc(HWND hWnd,UINT uMsg,UINT_PTR idEvent,DWORD dwTime)
 {
-	(void)hWnd, (void)uMsg, (void)idEvent, (void)dwTime;
+    (void)hWnd,(void)uMsg,(void)idEvent,(void)dwTime;
 
-	UpdateIcon(NIM_MODIFY);
+    UpdateIcon(NIM_MODIFY);
 }
 
 //////////////////////////////////////////////////////////////////////////
@@ -269,37 +269,37 @@ static VOID CALLBACK UpdateIconTimerProc(HWND hWnd, UINT uMsg, UINT_PTR idEvent,
 
 static void CreateStuff(void)
 {
-	{
-		uint8_t zero[32 * 32 / 8] = { 0, };
+    {
+        uint8_t zero[32*32/8]={0,};
 
-		g_maskBitmap32x32 = CreateBitmap(32, 32, 1, 1, zero);
-	}
+        g_maskBitmap32x32=CreateBitmap(32,32,1,1,zero);
+    }
 
-	{
-		WNDCLASSEX w;
+    {
+        WNDCLASSEX w;
 
-		w.cbClsExtra = 0;
-		w.cbSize = sizeof w;
-		w.cbWndExtra = 0;
-		w.hbrBackground = GetStockObject(WHITE_BRUSH);
-		w.hCursor = LoadCursor(0, IDC_ARROW);
-		w.hIconSm = w.hIcon = LoadIcon(0, IDI_APPLICATION);
-		w.hInstance = GetModuleHandle(NULL);
-		w.lpfnWndProc = &WndProc;
-		w.lpszClassName = CLASS_NAME;
-		w.lpszMenuName = NULL;
-		w.style = CS_HREDRAW | CS_VREDRAW;
+        w.cbClsExtra=0;
+        w.cbSize=sizeof w;
+        w.cbWndExtra=0;
+        w.hbrBackground=GetStockObject(WHITE_BRUSH);
+        w.hCursor=LoadCursor(0,IDC_ARROW);
+        w.hIconSm=w.hIcon=LoadIcon(0,IDI_APPLICATION);
+        w.hInstance=GetModuleHandle(NULL);
+        w.lpfnWndProc=&WndProc;
+        w.lpszClassName=CLASS_NAME;
+        w.lpszMenuName=NULL;
+        w.style=CS_HREDRAW|CS_VREDRAW;
 
-		RegisterClassEx(&w);
-	}
+        RegisterClassEx(&w);
+    }
 
-	g_hWnd = CreateWindow(CLASS_NAME, "NotifyClock", WS_OVERLAPPEDWINDOW, CW_USEDEFAULT, -1, 0, 0,
-		NULL, NULL, GetModuleHandle(0), NULL);
-	//ShowWindow(g_hWnd, SW_SHOW);
+    g_hWnd=CreateWindow(CLASS_NAME,"NotifyClock",WS_OVERLAPPEDWINDOW,CW_USEDEFAULT,-1,0,0,
+        NULL,NULL,GetModuleHandle(0),NULL);
+    //ShowWindow(g_hWnd, SW_SHOW);
 
-	UpdateIcon(NIM_ADD);
+    UpdateIcon(NIM_ADD);
 
-	SetTimer(g_hWnd, 1, 1000, &UpdateIconTimerProc);
+    SetTimer(g_hWnd,1,1000,&UpdateIconTimerProc);
 }
 
 //////////////////////////////////////////////////////////////////////////
@@ -307,41 +307,41 @@ static void CreateStuff(void)
 
 static void MainLoop(void)
 {
-	for (;;)
-	{
-		int r;
-		MSG msg;
+    for(;;)
+    {
+        int r;
+        MSG msg;
 
-		r = GetMessage(&msg, NULL, 0, 0);
-		if (r == 0 || r == -1)
-			break;
+        r=GetMessage(&msg,NULL,0,0);
+        if(r==0||r==-1)
+            break;
 
-		TranslateMessage(&msg);
-		DispatchMessage(&msg);
-	}
+        TranslateMessage(&msg);
+        DispatchMessage(&msg);
+    }
 
-	Shell_NotifyIcon(NIM_DELETE, &(NOTIFYICONDATA){.cbSize = sizeof(NOTIFYICONDATA),
-		.hWnd = g_hWnd, .uID = NID_ID});
+    Shell_NotifyIcon(NIM_DELETE,&(NOTIFYICONDATA){.cbSize=sizeof(NOTIFYICONDATA),
+        .hWnd=g_hWnd,.uID=NID_ID});
 }
 
 //////////////////////////////////////////////////////////////////////////
 //////////////////////////////////////////////////////////////////////////
 
-int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine, int nCmdShow)
+int WINAPI WinMain(HINSTANCE hInstance,HINSTANCE hPrevInstance,LPSTR lpCmdLine,int nCmdShow)
 {
-	(void)hInstance, (void)hPrevInstance, (void)lpCmdLine, (void)nCmdShow;
+    (void)hInstance,(void)hPrevInstance,(void)lpCmdLine,(void)nCmdShow;
 
-	if (OpenMutex(MUTEX_ALL_ACCESS, FALSE, MUTEX_NAME))
-		return 0;
+    if(OpenMutex(MUTEX_ALL_ACCESS,FALSE,MUTEX_NAME))
+        return 0;
 
-	HANDLE hMutex = CreateMutex(NULL, FALSE, MUTEX_NAME);
+    HANDLE hMutex=CreateMutex(NULL,FALSE,MUTEX_NAME);
 
-	CreateStuff();
+    CreateStuff();
 
-	MainLoop();
+    MainLoop();
 
-	ReleaseMutex(hMutex);
-	hMutex = NULL;
+    ReleaseMutex(hMutex);
+    hMutex=NULL;
 
-	return 0;
+    return 0;
 }
