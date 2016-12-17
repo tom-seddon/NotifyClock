@@ -62,6 +62,8 @@ static WORD g_displayedHour=MAXWORD;
 static WORD g_displayedMinute=MAXWORD;
 static HWND g_hWnd;
 static HBITMAP g_maskBitmap32x32;
+static BOOL g_gotDateFormat;
+static WCHAR *g_dateFormat;
 
 //////////////////////////////////////////////////////////////////////////
 //////////////////////////////////////////////////////////////////////////
@@ -124,22 +126,19 @@ static void Digit2x(uint8_t *p,int c)
 //////////////////////////////////////////////////////////////////////////
 //////////////////////////////////////////////////////////////////////////
 
-static char *GetTimeString(
-    int (WINAPI *fn)(LCID,DWORD,const SYSTEMTIME *,LPCTSTR,LPTSTR,int),
-    DWORD flags,
-    const SYSTEMTIME *time)
+static BOOL CALLBACK FindDateFormat(LPWSTR lpDateFormatString,CALID CalendarID,LPARAM lParam)
 {
-    int n=(*fn)(LOCALE_USER_DEFAULT,flags,time,NULL,NULL,0);
+    (void)CalendarID,(void)lParam;
+    //dprintf("Format: %S\n",lpDateFormatString);
 
-    char *p=malloc(n);
+    if(!g_dateFormat)
+    {
+        if(wcsstr(lpDateFormatString,L"dddd"))
+            g_dateFormat=_wcsdup(lpDateFormatString);
+    }
 
-    (*fn)(LOCALE_USER_DEFAULT,flags,time,NULL,p,n);
-
-    return p;
+    return TRUE;
 }
-
-//////////////////////////////////////////////////////////////////////////
-//////////////////////////////////////////////////////////////////////////
 
 static void UpdateIcon(DWORD dwMessage)
 {
@@ -169,26 +168,37 @@ static void UpdateIcon(DWORD dwMessage)
             return;
     }
 
+    if(!g_gotDateFormat)
+    {
+        EnumDateFormatsExEx(&FindDateFormat,LOCALE_NAME_USER_DEFAULT,DATE_LONGDATE,0);
+
+        g_gotDateFormat=TRUE;
+    }
+
     BOOL good;
     {
-        NOTIFYICONDATA nid={
+        NOTIFYICONDATAW nid={
             sizeof nid,.hWnd=g_hWnd,.hIcon=hIcon,.uID=NID_ID,
             .uFlags=NIF_ICON|NIF_TIP|NIF_MESSAGE,.uCallbackMessage=WM_USER,
             .uVersion=NOTIFYICON_VERSION_4,
         };
 
-        char *timeStr=GetTimeString(&GetTimeFormat,TIME_NOSECONDS,&time);
-        char *dateStr=GetTimeString(&GetDateFormat,DATE_LONGDATE,&time);
+        DWORD dateFlags;
+        if(g_dateFormat)
+            dateFlags=0;
+        else
+            dateFlags=DATE_LONGDATE;
 
-        snprintf(nid.szTip,sizeof nid.szTip,"%s %s",timeStr,dateStr);
+        int n=GetDateFormatEx(LOCALE_NAME_USER_DEFAULT,dateFlags,&time,g_dateFormat,NULL,0,NULL);
 
-        free(timeStr);
-        timeStr=NULL;
+        WCHAR *dateStr=calloc(n,sizeof *dateStr);
 
-        free(dateStr);
-        dateStr=NULL;
+        n=GetDateFormatEx(LOCALE_NAME_USER_DEFAULT,dateFlags,&time,g_dateFormat,dateStr,n,NULL);
+        ASSERT(n>0);
 
-        good=Shell_NotifyIcon(dwMessage,&nid);
+        wcsncpy(nid.szTip,dateStr,ARRAYSIZE(nid.szTip)-1);
+
+        good=Shell_NotifyIconW(dwMessage,&nid);
     }
 
     DestroyIcon(hIcon);
