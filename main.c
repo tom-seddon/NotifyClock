@@ -38,6 +38,8 @@ static const char MUTEX_NAME[]="NotifyClock-E12FB551-CEB7-41CD-9826-4EE66F2C8167
 static const char CLASS_NAME[]="NotifyClock-CD0284C5-0226-4C94-AB51-45575117D13F";
 
 static const UINT NID_ID=0;
+static UINT WM_TaskbarCreated=0;
+
 
 //////////////////////////////////////////////////////////////////////////
 //////////////////////////////////////////////////////////////////////////
@@ -140,14 +142,17 @@ static BOOL CALLBACK FindDateFormat(LPWSTR lpDateFormatString,CALID CalendarID,L
     return TRUE;
 }
 
-static void UpdateIcon(DWORD dwMessage)
+static void UpdateIcon(DWORD dwMessage,BOOL force)
 {
     SYSTEMTIME time;
     {
         GetLocalTime(&time);
 
-        if(g_displayedHour==time.wHour&&g_displayedMinute==time.wMinute)
-            return;
+		if(!force)
+		{
+			if(g_displayedHour==time.wHour&&g_displayedMinute==time.wMinute)
+				return;
+		}
     }
 
     uint8_t bits[32][4];
@@ -259,6 +264,12 @@ static LRESULT CALLBACK WndProc(HWND hWnd,UINT uMsg,WPARAM wParam,LPARAM lParam)
     case WM_CLOSE:
         PostQuitMessage(0);
         return 0;
+
+	default:
+		if(uMsg==WM_TaskbarCreated) {
+			UpdateIcon(NIM_ADD,TRUE);
+		}
+		break;
     }
 
     return DefWindowProc(hWnd,uMsg,wParam,lParam);
@@ -271,7 +282,7 @@ static VOID CALLBACK UpdateIconTimerProc(HWND hWnd,UINT uMsg,UINT_PTR idEvent,DW
 {
     (void)hWnd,(void)uMsg,(void)idEvent,(void)dwTime;
 
-    UpdateIcon(NIM_MODIFY);
+    UpdateIcon(NIM_MODIFY,FALSE);
 }
 
 //////////////////////////////////////////////////////////////////////////
@@ -307,7 +318,7 @@ static void CreateStuff(void)
         NULL,NULL,GetModuleHandle(0),NULL);
     //ShowWindow(g_hWnd, SW_SHOW);
 
-    UpdateIcon(NIM_ADD);
+    UpdateIcon(NIM_ADD,TRUE);
 
     SetTimer(g_hWnd,1,1000,&UpdateIconTimerProc);
 }
@@ -340,6 +351,8 @@ static void MainLoop(void)
 int WINAPI WinMain(HINSTANCE hInstance,HINSTANCE hPrevInstance,LPSTR lpCmdLine,int nCmdShow)
 {
     (void)hInstance,(void)hPrevInstance,(void)lpCmdLine,(void)nCmdShow;
+
+	WM_TaskbarCreated=RegisterWindowMessage("TaskbarCreated");
 
     if(OpenMutex(MUTEX_ALL_ACCESS,FALSE,MUTEX_NAME))
         return 0;
