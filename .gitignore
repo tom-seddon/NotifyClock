@@ -7,3 +7,6 @@ NotifyClock.Debug.*.exe
 NotifyClock.Debug.*.pdb
 *.VC.VC.opendb
 *.vc.db
+/.vs/
+/NotifyClock.vcxproj.user
+/NotifyClock_Debug_x86.*
