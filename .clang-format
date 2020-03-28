@@ -1,0 +1,5 @@
+# https://releases.llvm.org/5.0.0/tools/clang/docs/ClangFormatStyleOptions.html
+
+AllowShortFunctionsOnASingleLine: false
+SortIncludes: false
+MacroBlockEnd: LOG_DEFINE
