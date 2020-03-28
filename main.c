@@ -228,10 +228,14 @@ static void DoPopupMenu(int x, int y) {
   SetForegroundWindow(g_hWnd);
 
   HMENU hMenu;
-  int idExit;
+  int idCopy, idExit;
   {
     hMenu = CreatePopupMenu();
     int id = 1;
+
+    AppendMenu(hMenu, 0, idCopy = id++, "&Copy");
+
+    AppendMenu(hMenu, MF_SEPARATOR, 0, NULL);
 
     AppendMenu(hMenu, 0, idExit = id++, "E&xit");
   }
@@ -243,6 +247,29 @@ static void DoPopupMenu(int x, int y) {
 
   if (id == idExit)
     PostQuitMessage(0);
+  else if (id == idCopy) {
+    if (OpenClipboard(g_hWnd)) {
+      EmptyClipboard();
+
+      SYSTEMTIME time;
+      GetLocalTime(&time);
+
+      char text[1000];
+      int len = snprintf(text, sizeof text, "%04u%02u%02u_%02u%02u%02u",
+                         time.wYear, time.wMonth, time.wDay, time.wHour,
+                         time.wMinute, time.wSecond);
+
+      HANDLE hText = GlobalAlloc(GMEM_MOVEABLE, len + 1);
+
+      memcpy(GlobalLock(hText), text, len + 1);
+
+      GlobalUnlock(hText);
+
+      SetClipboardData(CF_TEXT, hText);
+
+      CloseClipboard();
+    }
+  }
 }
 
 //////////////////////////////////////////////////////////////////////////

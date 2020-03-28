@@ -19,6 +19,10 @@ If you forget the date, hover over the icon to get a tooltip.
 
 [[./doc_imgs/NotifyClockTooltip.png]]
 
+To copy the current date and time to the clipboard, right click the
+icon and select =Copy= from the menu. The date and time copied is
+always of the form YYYYMMDD_HHMMSS.
+
 To exit, right click the icon and select =Exit= from the menu.
 
 * Download
